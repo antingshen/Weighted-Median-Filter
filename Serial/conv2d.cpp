@@ -71,56 +71,55 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
-int conv2D(int data_size_X, int data_size_Y,
-					float* kernel, pixel_t* in, pixel_t* out)
-{
-	// the x coordinate of the kernel's center
-	int kern_cent_X = (KERNX - 1)/2;
-	// the y coordinate of the kernel's center
-	int kern_cent_Y = (KERNY - 1)/2;
+int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
+	int x, y;
+	int i, j;
+	int m, z;
+	int a;
+	int AR[150];
+	int AG[150];
+	int AB[150];
+	int kern_cent = (KERNX - 1)/2;
 	
-	// main convolution loop
-	for(int x = 0; x < data_size_X; x++){ // the x coordinate of the output location we're focusing on
-		for(int y = 0; y < data_size_Y; y++){ // the y coordinate of theoutput location we're focusing on
-			for(int i = -kern_cent_X; i <= kern_cent_X; i++){ // kernel unflipped x coordinate
-				for(int j = -kern_cent_Y; j <= kern_cent_Y; j++){ // kernel unflipped y coordinate
-					// only do the operation if not out of bounds
-					if(x+i>-1 && x+i<data_size_X && y+j>-1 && y+j<data_size_Y){
-						//Note that the kernel is flipped
-						out[x+y*data_size_X].r += 
-								kernel[(kern_cent_X-i)+(kern_cent_Y-j)*KERNX] * in[(x+i) + (y+j)*data_size_X].r;
-						out[x+y*data_size_X].g += 
-								kernel[(kern_cent_X-i)+(kern_cent_Y-j)*KERNX] * in[(x+i) + (y+j)*data_size_X].g;
-						out[x+y*data_size_X].b += 
-								kernel[(kern_cent_X-i)+(kern_cent_Y-j)*KERNX] * in[(x+i) + (y+j)*data_size_X].b;
+
+	
+	for(y = 0; y < cols; y++)
+		for(x = 0; x < rows; x++)
+		{
+			z = 0;
+			for(j = -kern_cent; j <= kern_cent; j++)
+				for(i = -kern_cent; i <= kern_cent; i++)
+				{
+					for(m = 1; m <= kernel[(kern_cent+i)+(kern_cent+j)*KERNX]; m++)
+					{
+						AR[z] = input[(x+i) + (y+j)*cols].r;
+						AG[z] = input[(x+i) + (y+j)*cols].g;
+						AB[z] = input[(x+i) + (y+j)*cols].b;
+						z++;
 					}
 				}
+			
+			for(j = 1; j < (z-1); j++)
+			{
+				a = AR[j];
+				i = j-1;
+				while(i >= 0 && AR[i] > a)
+				{
+					AR[i+1] = AR[i];
+					i = i-1;
+				}
+				AR[i+1] = a;
 			}
+			
+			output[x+y*cols].r = AR[z/2];
+			output[x+y*cols].g = AG[z/2];
+			output[x+y*cols].b = AB[z/2];
 		}
-	}
-
-	for (int i=0; i<data_size_X*data_size_Y; i++){
-		if (out[i].r<0){
-			out[i].r=0;
-		}
-		if (out[i].r>255){
-			out[i].r=255;
-		}
-		if (out[i].g<0){
-			out[i].g=0;
-		}
-		if (out[i].g>255){
-			out[i].g=255;
-		}
-		if (out[i].b<0){
-			out[i].b=0;
-		}
-		if (out[i].b>255){
-			out[i].b=255;
-		}
-	}
+		
 	return 1;
 }
+
+
 
 int main(int argc, char *argv[])
 {
