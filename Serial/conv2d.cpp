@@ -72,14 +72,14 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
 int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
-	int x, y;
-	int i, j;
-	int m, z;
-	int a;
-	int AR[150];
+	int x, y; //the iterator for the input image
+	int i, j; //the iterator for the kernel
+	int m, z; //m is multiply-times, z is index of storage
+	int r, g, b; //r,g,b used as index while sorting
+	int AR[150]; //storage to hold single-channel color information 
 	int AG[150];
 	int AB[150];
-	int kern_cent = (KERNX - 1)/2;
+	int kern_cent = (KERNX - 1)/2; //the center of the kernel, used for indexing into kernel
 	
 	for(x = 0; x < cols; x++)
 		for(y = 0; y < rows; y++)
@@ -90,6 +90,7 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 				{
 					for(m = 1; m <= kernel[(kern_cent+i)+(kern_cent+j)*KERNX]; m++)
 					{
+						//grab the input from each pixel "m" times, where "m" is defined in the kernel
 						AR[z] = input[(x+i) + (y+j)*cols].r;
 						AG[z] = input[(x+i) + (y+j)*cols].g;
 						AB[z] = input[(x+i) + (y+j)*cols].b;
@@ -97,18 +98,46 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 					}
 				}
 			
+			//sort red
 			for(j = 1; j < (z-1); j++)
 			{
-				a = AR[j];
+				r = AR[j];
 				i = j-1;
-				while(i >= 0 && AR[i] > a)
+				while(i >= 0 && AR[i] > r)
 				{
 					AR[i+1] = AR[i];
-					i = i-1;
+					i--;
 				}
-				AR[i+1] = a;
+				AR[i+1] = r;
 			}
 			
+			//sort green
+			for(j = 1; j < (z-1); j++)
+			{
+				g = AG[j];
+				i = j-1;
+				while(i >= 0 && AG[i] > g)
+				{
+					AG[i+1] = AG[i];
+					i--;
+				}
+				AG[i+1] = g;
+			}
+			
+			//sort blue
+			for(j = 1; j < (z-1); j++)
+			{
+				b = AB[j];
+				i = j-1;
+				while(i >= 0 && AB[i] > b)
+				{
+					AB[i+1] = AB[i];
+					i--;
+				}
+				AB[i+1] = b;
+			}
+			
+			//output the median of each of three colors
 			output[x+y*cols].r = AR[z/2];
 			output[x+y*cols].g = AG[z/2];
 			output[x+y*cols].b = AB[z/2];
