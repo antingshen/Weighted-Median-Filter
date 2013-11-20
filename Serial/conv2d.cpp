@@ -81,14 +81,12 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 	int AB[150];
 	int kern_cent = (KERNX - 1)/2;
 	
-
-	
-	for(y = 0; y < cols; y++)
-		for(x = 0; x < rows; x++)
+	for(x = 0; x < cols; x++)
+		for(y = 0; y < rows; y++)
 		{
 			z = 0;
-			for(j = -kern_cent; j <= kern_cent; j++)
-				for(i = -kern_cent; i <= kern_cent; i++)
+			for(i = -kern_cent; i <= kern_cent; i++)
+				for(j = -kern_cent; j <= kern_cent; j++)
 				{
 					for(m = 1; m <= kernel[(kern_cent+i)+(kern_cent+j)*KERNX]; m++)
 					{
@@ -110,7 +108,6 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 				}
 				AR[i+1] = a;
 			}
-
 			
 			output[x+y*cols].r = AR[z/2];
 			output[x+y*cols].g = AG[z/2];
@@ -119,56 +116,6 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 		
 	return 1;
 }
-
-// int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
-	// int x, y;
-	// int i, j;
-	// int m, z;
-	// int a;
-	// int AR[150];
-	// int AG[150];
-	// int AB[150];
-	// int kern_cent = (KERNX - 1)/2;
-	
-
-	
-	// for(y = 0; y < cols; y++)
-		// for(x = 0; x < rows; x++)
-		// {
-			// z = 0;
-			// for(j = -kern_cent; j <= kern_cent; j++)
-				// for(i = -kern_cent; i <= kern_cent; i++)
-				// {
-					// for(m = 1; m <= kernel[(kern_cent+i)+(kern_cent+j)*KERNX]; m++)
-					// {
-						// AR[z] = input[(x+i) + (y+j)*cols].r;
-						// AG[z] = input[(x+i) + (y+j)*cols].g;
-						// AB[z] = input[(x+i) + (y+j)*cols].b;
-						// z++;
-					// }
-				// }
-			
-			// for(j = 1; j < (z-1); j++)
-			// {
-				// a = AR[j];
-				// i = j-1;
-				// while(i >= 0 && AR[i] > a)
-				// {
-					// AR[i+1] = AR[i];
-					// i = i-1;
-				// }
-				// AR[i+1] = a;
-			// }
-			
-			// output[x+y*cols].r = AR[z/2];
-			// output[x+y*cols].g = AG[z/2];
-			// output[x+y*cols].b = AB[z/2];
-		// }
-		
-	// return 1;
-// }
-
-
 
 int main(int argc, char *argv[])
 {
