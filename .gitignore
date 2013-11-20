@@ -12,4 +12,8 @@
 *.la
 *.a
 
-.DS_Store
+# Temp files
+*.DS_Store
+*.un~
+*.~
+*.db
