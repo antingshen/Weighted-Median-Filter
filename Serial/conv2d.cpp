@@ -110,6 +110,7 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 				}
 				AR[i+1] = a;
 			}
+
 			
 			output[x+y*cols].r = AR[z/2];
 			output[x+y*cols].g = AG[z/2];
@@ -118,6 +119,54 @@ int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
 		
 	return 1;
 }
+
+// int conv2D(int cols, int rows, float* kernel, pixel_t* input, pixel_t* output) {
+	// int x, y;
+	// int i, j;
+	// int m, z;
+	// int a;
+	// int AR[150];
+	// int AG[150];
+	// int AB[150];
+	// int kern_cent = (KERNX - 1)/2;
+	
+
+	
+	// for(y = 0; y < cols; y++)
+		// for(x = 0; x < rows; x++)
+		// {
+			// z = 0;
+			// for(j = -kern_cent; j <= kern_cent; j++)
+				// for(i = -kern_cent; i <= kern_cent; i++)
+				// {
+					// for(m = 1; m <= kernel[(kern_cent+i)+(kern_cent+j)*KERNX]; m++)
+					// {
+						// AR[z] = input[(x+i) + (y+j)*cols].r;
+						// AG[z] = input[(x+i) + (y+j)*cols].g;
+						// AB[z] = input[(x+i) + (y+j)*cols].b;
+						// z++;
+					// }
+				// }
+			
+			// for(j = 1; j < (z-1); j++)
+			// {
+				// a = AR[j];
+				// i = j-1;
+				// while(i >= 0 && AR[i] > a)
+				// {
+					// AR[i+1] = AR[i];
+					// i = i-1;
+				// }
+				// AR[i+1] = a;
+			// }
+			
+			// output[x+y*cols].r = AR[z/2];
+			// output[x+y*cols].g = AG[z/2];
+			// output[x+y*cols].b = AB[z/2];
+		// }
+		
+	// return 1;
+// }
 
 
 
@@ -133,11 +182,11 @@ float kernel_1[]={ 1, 1, 1, 1, 1, // blur
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1, }; normalize(kernel_1);
-float kernel_2[] = { 0, 0, 0, 0, 0, // darken
-					 0, 0, 0, 0, 0,
-					 0, 0,0.5, 0, 0,
-					 0, 0, 0, 0, 0,
-					 0, 0, 0, 0, 0, };
+float kernel_2[] = { 1, 1, 1, 1, 1, // weighted median filter
+					 2, 2, 2, 2, 2,
+					 3, 3, 3, 3, 3,
+					 2, 2, 2, 2, 2,
+					 1, 1, 1, 1, 1, };
 float kernel_3[]={1,1,1,1,1, // weighted mean filter
 				  1,2,2,2,1,
 				  1,2,3,2,1,
