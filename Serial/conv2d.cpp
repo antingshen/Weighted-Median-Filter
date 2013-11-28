@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
-#include <omp.h>
 
 #include "readjpeg.h"
 

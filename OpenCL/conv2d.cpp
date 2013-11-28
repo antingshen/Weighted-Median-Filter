@@ -10,15 +10,6 @@
 #include "readjpeg.h"
 #include "clhelp.h"
 
-void normalize( float * kernel ) {
-  int sum = 0;
-  for (int i = 0; i < 25; i++ ) {
-	sum += kernel[i];
-  }
-  for (int i = 0; i < 25 && sum != 0; i++ ) {
-	kernel[i] /= sum;
-  }
-}
 
 typedef struct
 {
@@ -35,6 +26,19 @@ typedef struct
 // }
 
 void blur_frame(int width, int height, float* kernel, pixel_t *in, pixel_t *out){
+}
+
+void print_matrix(float *array, int num, int x_size){
+    int a = 0;
+    printf("%5.2f, ", array[a]);
+    for (a = 1; a < num; a++){
+        if (a%x_size == x_size-1){
+            printf("%5.2f,\n", array[a]);
+        } else{
+            printf("%5.2f, ", array[a]);
+        }
+    }
+    printf("\n");
 }
 
 void convert_to_pixel(pixel_t *out, frame_ptr in)
@@ -72,7 +76,7 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
-int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* out)
+int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1)
 {
     printf("Initiating OpenCL...\n");
     int kern_cent_X = (KERNX - 1)/2;
@@ -113,7 +117,7 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
 
     cl_int err = CL_SUCCESS;
 
-    cl_mem g_in, g_out, g_kern, g_debug;
+    cl_mem g_in, g_out, g_kern;
 
     g_in = clCreateBuffer(cv.context,CL_MEM_READ_WRITE,
         sizeof(int)*pad_size_total,NULL,&err);
@@ -158,19 +162,16 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
     //     sizeof(int), &kern_width);
     // CHK_ERR(err);
 
-    err = clSetKernelArg(convolve,4,
-    	sizeof(float)*KERNX*KERNY, NULL);
-    CHK_ERR(err);
-
-    int sum = 0;
+    float sum = 0;
     for (int i=0; i<KERNX*KERNY; i++){
     	sum += kernel[i];
     }
     sum /= 2;
-    err = clSetKernelArg(convolve,5,
-    	sizeof(int), &sum);
+    err = clSetKernelArg(convolve,4,
+    	sizeof(float), &sum);
     CHK_ERR(err);
 
+    *t0 = timestamp();
     err = clEnqueueNDRangeKernel(cv.commands, 
         convolve,
         2,//work_dim,
@@ -181,6 +182,7 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
         NULL, //event_wait_list
         NULL //
         );
+    *t1 = timestamp();
     CHK_ERR(err);
 
     err = clEnqueueReadBuffer(cv.commands, g_out, true, 0, sizeof(int)*data_size_X*data_size_Y,
@@ -193,8 +195,6 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
 
     uninitialize_ocl(cv);
 
-    printf("OpenCL completed.\n");
-
     // printf("--KERNEL--\n");
     // print_matrix(kern_cpy, KERNX*KERNY, KERNX);
     // printf("--INPUT--\n");
@@ -206,20 +206,18 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
 
 }
 
-
-
 int main(int argc, char *argv[])
 {
 float kernel_0[] = { 0, 0, 0, 0, 0, // "sharpen"
 					 0, 0,-1, 0, 0,
 					 0,-1, 5,-1, 0,
 					 0, 0,-1, 0, 0,
-					 0, 0, 0, 0, 0, }; normalize(kernel_0);
+					 0, 0, 0, 0, 0, };
 float kernel_1[]={ 1, 1, 1, 1, 1, // blur
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1,
-				   1, 1, 1, 1, 1, }; normalize(kernel_1);
+				   1, 1, 1, 1, 1, };
 float kernel_2[] = { 0, 0, 0, 0, 0, // darken
 					 0, 0, 0, 0, 0,
 					 0, 0,0.5, 0, 0,
@@ -229,7 +227,7 @@ float kernel_3[]={1,1,1,1,1, // weighted mean filter
 				  1,2,2,2,1,
 				  1,2,3,2,1,
 				  1,2,2,2,1,
-				  1,1,1,1,1, }; normalize(kernel_3);
+				  1,1,1,1,1, };
 float kernel_4[] = { 0, 0, 0, 0, 0, // "edge detect"
 					 0, 1, 0,-1, 0,
 					 0, 0, 0, 0, 0,
@@ -305,10 +303,9 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 
 	float* kernel = kernels[kernel_num];
 
-	double t0 = timestamp();
-	conv2D(width, height, kernel, inFloats, outFloats);
-	t0 = timestamp() - t0;
-	printf("%g sec\n", t0);
+	double t0, t1;
+	conv2D(width, height, kernel, inFloats, outFloats, &t0, &t1);
+	printf("%g sec\n", t1-t0);
 
 	for (int i=0; i<width*height; i++){
 		outPix[i].r = outFloats[i];
