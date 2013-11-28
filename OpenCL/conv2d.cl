@@ -8,8 +8,8 @@ __kernel void convolve(
 	__local float * buffer,
 	const int median_index) 
 { 
-	KER_SIZE = 5;
-	NUM_ITERATIONS = 8;
+	const int KER_SIZE = 5;
+	const int NUM_ITERATIONS = 8;
 
 	const int out_num_col = get_global_size(0);
 	const int out_col = get_global_id(0); 
@@ -34,7 +34,7 @@ __kernel void convolve(
 	float upper = 255.0f;
 	uint higher;
 
-	for (int _ = 0; i < NUM_ITERATIONS; i++){
+	for (int _ = 0; _ < NUM_ITERATIONS; _++){
 		higher = 0;
 		for (int i = 0; i < KER_SIZE*KER_SIZE; i++){
 			higher += (estimate < buffer[i]) * kern[i];

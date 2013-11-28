@@ -1,12 +1,14 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <string>
 #include <algorithm>
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include "readjpeg.h"
+#include "clhelp.h"
 
 void normalize( float * kernel ) {
   int sum = 0;
@@ -25,12 +27,12 @@ typedef struct
 	float b;
 } pixel_t;
 
-double timestamp()
-{
-	struct timeval tv;
-	gettimeofday (&tv, 0);
-	return tv.tv_sec + 1e-6*tv.tv_usec;
-}
+// double timestamp()
+// {
+// 	struct timeval tv;
+// 	gettimeofday (&tv, 0);
+// 	return tv.tv_sec + 1e-6*tv.tv_usec;
+// }
 
 void blur_frame(int width, int height, float* kernel, pixel_t *in, pixel_t *out){
 }
@@ -288,20 +290,31 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 	inPix = new pixel_t[width*height];
 	outPix = new pixel_t[width*height];
 
+	convert_to_pixel(inPix, frame);
+
+	float* inFloats = new float[width*height];
+	float* outFloats = new float[width*height];
+
 	for (int i=0; i<width*height; i++){
 		outPix[i].r = 0;
 		outPix[i].g = 0;
 		outPix[i].b = 0;
+		outFloats[i] = 0;
+		inFloats[i] = (inPix[i].r + inPix[i].g + inPix[i].b)/3;
 	}
-	
-	convert_to_pixel(inPix, frame);
 
 	float* kernel = kernels[kernel_num];
 
 	double t0 = timestamp();
-	conv2D(width, height, kernel, inPix, outPix);
+	conv2D(width, height, kernel, inFloats, outFloats);
 	t0 = timestamp() - t0;
 	printf("%g sec\n", t0);
+
+	for (int i=0; i<width*height; i++){
+		outPix[i].r = outFloats[i];
+		outPix[i].g = outFloats[i];
+		outPix[i].b = outFloats[i];
+	}
 
 	convert_to_frame(frame, outPix);
 
