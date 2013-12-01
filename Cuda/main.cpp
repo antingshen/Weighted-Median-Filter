@@ -8,8 +8,18 @@
 #include <time.h>
 
 #include "readjpeg.h"
-#include "clhelp.h"
 
+void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1);
+
+void normalize( float * kernel ) {
+  int sum = 0;
+  for (int i = 0; i < 25; i++ ) {
+        sum += kernel[i];
+  }
+  for (int i = 0; i < 25 && sum != 0; i++ ) {
+        kernel[i] /= sum;
+  }
+}
 
 typedef struct
 {
@@ -66,6 +76,45 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
 
 int main(int argc, char *argv[]){
+
+float kernel_0[] = { 0, 0, 0, 0, 0, // "sharpen"
+                                         0, 0,-1, 0, 0,
+                                         0,-1, 5,-1, 0,
+                                         0, 0,-1, 0, 0,
+                                         0, 0, 0, 0, 0, }; normalize(kernel_0);
+float kernel_1[]={ 1, 1, 1, 1, 1, // blur
+                                   1, 1, 1, 1, 1,
+                                   1, 1, 1, 1, 1,
+                                   1, 1, 1, 1, 1,
+                                   1, 1, 1, 1, 1, }; normalize(kernel_1);
+float kernel_2[] = { 1, 1, 1, 1, 1, // weighted median filter
+                                         2, 2, 2, 2, 2,
+                                         3, 3, 3, 3, 3,
+                                         2, 2, 2, 2, 2,
+                                         1, 1, 1, 1, 1, };
+float kernel_3[]={1,1,1,1,1, // weighted mean filter
+                                  1,2,2,2,1,
+                                  1,2,3,2,1,
+                                  1,2,2,2,1,
+                                  1,1,1,1,1, }; normalize(kernel_3);
+float kernel_4[] = { 0, 0, 0, 0, 0, // "edge detect"
+                                         0, 1, 0,-1, 0,
+                                         0, 0, 0, 0, 0,
+                                         0,-1, 0, 1, 0,
+                                         0, 0, 0, 0, 0, };
+float kernel_5[] = { 0, 0, 0, 0, 0, // "emboss"
+                                         0,-2,-1, 0, 0,
+                                         0,-1, 1, 1, 0,
+                                         0, 0, 1, 2, 0,
+                                         0, 0, 0, 0, 0, };
+float kernel_6[] = {-1,-1,-1,-1,-1, // "edge detect"
+                                        -1,-1,-1,-1,-1,
+                                        -1,-1,24,-1,-1,
+                                        -1,-1,-1,-1,-1,
+                                        -1,-1,-1,-1,-1, };
+float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
+                                        kernel_5, kernel_6};
+
 	int c;
 	char *inName = NULL;
 	char *outName = NULL;
@@ -124,7 +173,7 @@ int main(int argc, char *argv[]){
 	float* kernel = kernels[kernel_num];
 
     double t0, t1;
-    cuda_function(width, height, kerle, inFLoats, outFloats, &t0, &t1);
+    cuda_function(width, height, kernel, inFloats, outFloats, &t0, &t1);
     printf("%g sec\n", t1-t0);
 
     for (int i=0; i<width*height; i++){
