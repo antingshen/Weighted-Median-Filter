@@ -127,7 +127,7 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
         pixel_t *outPix = NULL;
 
         //grab command line arguments
-    while((c = getopt(argc, argv, "i:k:o:"))!=-1)
+    while((c = getopt(argc, argv, "i:k:o:c"))!=-1)
     {
             switch(c)
             {
@@ -178,11 +178,17 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
     double t0, t1;
     cuda_function(width, height, kernel, inFloats, outFloats, &t0, &t1, color);
     printf("%g sec\n", t1-t0);
-    if(color == 1) { 
+    if(color == 0) { 
         for (int i=0; i<width*height; i++){
             outPix[i].r = outFloats[i];
             outPix[i].g = outFloats[i];
             outPix[i].b = outFloats[i];
+        }
+    } else {
+        for (int i=0; i<width*height; i++){
+            outPix[i].r = outFloats[i].r;
+            outPix[i].g = outFloats[i].g;
+            outPix[i].b = outFloats[i].b;
         }
     }
     convert_to_frame(frame, outPix);
