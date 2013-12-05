@@ -77,25 +77,24 @@ __global__ void convolveBW(
         out[out_row*out_num_col+out_col] = estimate;
 
 }
-__kernel void convolveC(
-        const __global pixel_t * pad, 
-        __global float * kern, 
-        __global pixel_t * out, 
+__global__ void convolveC(
+        pixel_t * pad, 
+        float * kern, 
+        pixel_t * out, 
         const int pad_num_col,
-        const float median_index) 
+        const float median_index
+        ) 
 { 
         const int NUM_ITERATIONS = 8;
 
-        const int out_num_col = get_global_size(0);
-        const int out_col = get_global_id(0); 
-        const int out_row = get_global_id(1);
+        const int out_num_col = gridDim.x*blockDim.x;
+        const int out_col = blockIdx.x*blockDim.x+threadIdx.x; 
+        const int out_row = blockIdx.y*blockDim.y+threadIdx.y;
 
         float buffer[25];
         pixel_t pix;
 
         int pad_row_head;
-        int index = 0;
-        int i = 0;
 
         // copy into buffer
         pad_row_head = out_row * pad_num_col + out_col;
@@ -246,6 +245,9 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
   	// copy back the result array to the CPU
   	cudaMemcpy(out, g_out, sizeof(pixel_t)*data_size_X*data_size_Y, cudaMemcpyDeviceToHost);
     	cudaDeviceSynchronize();
+            cudaFree(g_in);
+    cudaFree(g_out);
+    cudaFree(g_kern);
     } else {
                     float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
 
@@ -284,10 +286,11 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
     // copy back the result array to the CPU
     cudaMemcpy(out, g_out, sizeof(float)*data_size_X*data_size_Y, cudaMemcpyDeviceToHost);
         cudaDeviceSynchronize();
+            cudaFree(g_in);
+    cudaFree(g_out);
+    cudaFree(g_kern);
     }
-  	cudaFree(g_in);
-  	cudaFree(g_out);
-	cudaFree(g_kern);
+
 
   	return;
 }
