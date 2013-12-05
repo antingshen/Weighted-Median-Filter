@@ -68,7 +68,7 @@ frame_ptr read_JPEG_file (char * filename)
   (void) jpeg_start_decompress(&cinfo);
   
   /* Step X: Create a frame struct & buffers and fill in the blanks */
-  fprintf(stderr, "  Opened %s: height = %d, width = %d, c = %d\n",
+  //printff(stderr, "  Opened %s: height = %d, width = %d, c = %d\n",
 	  filename, cinfo.output_height, cinfo.output_width, cinfo.output_components);
   p_info = allocate_frame(cinfo.output_height, cinfo.output_width, cinfo.output_components);
   
