@@ -12,6 +12,12 @@
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
 
+double timestamp2()
+{
+  struct timeval tv;
+  gettimeofday (&tv, 0);
+  return tv.tv_sec + 1e-6*tv.tv_usec;
+}
 typedef struct
 {
         float r;
@@ -230,9 +236,9 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, pixel_t* in,
   	const dim3 gridSize(data_size_X, data_size_Y, 1);
 
 	// launch the kernel
- 	*t0 = timestamp();
+ 	*t0 = timestamp2();
   	convolveC<<<gridSize, blockSize>>>(g_in, g_kern, g_out, pad_size_X, sum);
-   	*t1 = timestamp();
+   	*t1 = timestamp2();
   	cudaDeviceSynchronize();
 
   	// copy back the result array to the CPU
