@@ -376,7 +376,7 @@ float kernel_6[] = {-1,-1,-1,-1,-1, // "edge detect"
 					-1,-1,-1,-1,-1, };
 float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 					kernel_5, kernel_6};
-
+    double program_start = timestamp();
 	int c;
 	char *inName = NULL;
 	char *outName = NULL;
@@ -456,12 +456,6 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 		conv2D(width, height, kernel, inPix, outPix, &kernel_start, &kernel_end);
 		call_end = timestamp();
 	}
-	if (quiet){
-		printf("%g,%g\n", kernel_end-kernel_start,call_end-call_start);
-	} else {
-		printf("Pure kernel time: %g sec\n", kernel_end-kernel_start);
-		printf("Function time: %g sec\n", call_end-call_start);
-	}
 
 	convert_to_frame(frame, outPix);
 
@@ -470,5 +464,14 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 
 	delete [] inPix; 
 	delete [] outPix;
+
+    double program_end = timestamp();
+    if (quiet){
+        printf("%g,%g,%g\n", kernel_end-kernel_start,call_end-call_start,program_end-program_start);
+    } else {
+        printf("Pure kernel time: %g sec\n", kernel_end-kernel_start);
+        printf("Function time: %g sec\n", call_end-call_start);
+        printf("Total time: %g sec\n", program_end-program_start);
+    }
 	return 0;
 }
