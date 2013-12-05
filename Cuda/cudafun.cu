@@ -190,8 +190,8 @@ __global__ void convolveC(
 
 
 
-void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1, int color) {
-	printf("Initiating CUDA...\n");
+void cuda_function(int data_size_X, int data_size_Y, float* kernel, pixel_t* in, pixel_t* out, double* t0, double* t1) {
+	printf("Initiating CUDA Color...\n");
     
 
     int kern_cent_X = (KERNX - 1)/2;
@@ -206,13 +206,12 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
     for (int i = 0; i<KERNX*KERNY; i++) {
         kern_cpy[i] = kernel[KERNX * KERNY - 1 - i];
     }
-    if(color == 1){
             pixel_t *in_cpy = (pixel_t*) calloc(pad_size_total, sizeof(pixel_t));
     for (int b = 0; b < data_size_Y; b++){
         for (int c = 0; c < data_size_X; c++){
-            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].r = in[c+b*data_size_X];
-            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].g = in[c+b*data_size_X];
-            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].b = in[c+b*data_size_X];
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].r = in[c+b*data_size_X].r;
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].g = in[c+b*data_size_X].g;
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].b = in[c+b*data_size_X].b;
         }
     }
 
@@ -224,7 +223,7 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
     cudaMalloc((void**) &g_kern, sizeof(float)*KERNY*KERNX);
 
     cudaMemcpy(g_in, in_cpy, sizeof(pixel_t)*pad_size_total, cudaMemcpyHostToDevice);
-    cudaMemcpy(g_kern, kern_cpy, sizeof(pixel_t)*KERNX*KERNY, cudaMemcpyHostToDevice);
+    cudaMemcpy(g_kern, kern_cpy, sizeof(float)*KERNX*KERNY, cudaMemcpyHostToDevice);
     cudaDeviceSynchronize();
 
 	float sum = 0;
@@ -248,8 +247,24 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
             cudaFree(g_in);
     cudaFree(g_out);
     cudaFree(g_kern);
-    } else 
-    {
+    return;
+}
+void cuda_function2(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1) {
+    printf("Initiating CUDA...\n");
+    
+
+    int kern_cent_X = (KERNX - 1)/2;
+    int kern_cent_Y = (KERNY - 1)/2;
+    int pad_size_X = data_size_X+2*kern_cent_X;
+    int pad_size_Y = data_size_Y+2*kern_cent_Y;
+    int pad_size_total = pad_size_Y * pad_size_X;
+
+    // Padding code
+    float kern_cpy[KERNX*KERNY];
+
+    for (int i = 0; i<KERNX*KERNY; i++) {
+        kern_cpy[i] = kernel[KERNX * KERNY - 1 - i];
+    }
     float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
 
             for (int b = 0; b < data_size_Y; b++){
@@ -290,7 +305,6 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
             cudaFree(g_in);
     cudaFree(g_out);
     cudaFree(g_kern);
-    }
 
 
   	return;
