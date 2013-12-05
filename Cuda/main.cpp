@@ -8,8 +8,13 @@
 #include <time.h>
 
 #include "readjpeg.h"
-
-void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, pixel_t* out, double* t0, double* t1);
+typedef struct
+{
+        float r;
+        float g;
+        float b;
+} pixel_t;
+void cuda_function(int data_size_X, int data_size_Y, float* kernel, pixel_t* in, pixel_t* out, double* t0, double* t1);
 void cuda_function2(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1);
 
 void normalize( float * kernel ) {
@@ -22,12 +27,7 @@ void normalize( float * kernel ) {
   }
 }
 
-typedef struct
-{
-        float r;
-        float g;
-        float b;
-} pixel_t;
+
 void print_matrix(float *array, int num, int x_size){
     int a = 0;
     printf("%5.2f, ", array[a]);
@@ -167,24 +167,20 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 
     float* inFloats = new float[width*height];
     float* outFloats2 = new float[width*height];  
-    pixel_t* outFloats = new pixel_t[width*height]; 
    for (int i=0; i<width*height; i++){
         outPix[i].r = 0;
         outPix[i].g = 0;
         outPix[i].b = 0;
-        outFloats2[i] = 0
-        outFloats[i].r = 0;
-        outFloats2[i].g = 0;
-        outFloats[i].b = 0;
+        outFloats2[i] = 0;
         inFloats[i] = (inPix[i].r + inPix[i].g + inPix[i].b)/3;
         }
         float* kernel = kernels[kernel_num];
 
     double t0, t1;
     if(color == 1){
-        cuda_function(width, height, kernel, inFloats, outFloats, &t0, &t1, color);
+        cuda_function(width, height, kernel, inPix, outPix, &t0, &t1);
     } else {
-        cuda_function2(width, height, kernel, inFloats, outFloats2, &t0, &t1, color);
+        cuda_function2(width, height, kernel, inFloats, outFloats2, &t0, &t1);
 
     }
     printf("%g sec\n", t1-t0);
@@ -194,11 +190,8 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
             outPix[i].g = outFloats2[i];
             outPix[i].b = outFloats2[i];
         }
-            convert_to_frame(frame, outPix);
-    } else {
-    convert_to_frame(frame, outFloats);
-
-    }
+    } 
+    convert_to_frame(frame, outPix);
 
     write_JPEG_file(outName,frame,75);
     destroy_frame(frame);
