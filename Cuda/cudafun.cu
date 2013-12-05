@@ -190,7 +190,7 @@ __global__ void convolveC(
 
 
 
-void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1, int color) {
+void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, pixel_t* out, double* t0, double* t1) {
 	printf("Initiating CUDA...\n");
     
 
@@ -248,8 +248,10 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
             cudaFree(g_in);
     cudaFree(g_out);
     cudaFree(g_kern);
-    } else 
-    {
+    return;
+}
+void cuda_function2(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1) {
+
     float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
 
             for (int b = 0; b < data_size_Y; b++){
@@ -290,7 +292,6 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
             cudaFree(g_in);
     cudaFree(g_out);
     cudaFree(g_kern);
-    }
 
 
   	return;
