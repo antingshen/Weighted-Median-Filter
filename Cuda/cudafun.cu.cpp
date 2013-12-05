@@ -1,79 +1,57 @@
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
-#include <string>
-#include <algorithm>
-#include <unistd.h>
-#include <sys/time.h>
-#include <time.h>
+__global__ void convolve(
+        const __global float * pad, 
+        __global float * kern, 
+        __global float * out, 
+        const int pad_num_col,
+        const float median_index) 
+{ 
+        const int KER_SIZE = 5;
+        const int NUM_ITERATIONS = 8;
 
-#include "readjpeg.h"
-#include "clhelp.h"
+        const int out_num_col = gridDim.x*blockDim.x;
+        const int out_col = blockIdx.x*blockDim.x+threadIdx.x; 
+        const int out_row = blockIdx.y*blockDim.y+threadIdx.y;
 
-#define KERNX 5 //this is the x-size of the kernel. It will always be odd.
-#define KERNY 5 //this is the y-size of the kernel. It will always be odd.
-void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1) {
-	printf("Initiating OpenCL...\n");
-    int kern_cent_X = (KERNX - 1)/2;
-    int kern_cent_Y = (KERNY - 1)/2;
-    int pad_size_X = data_size_X+2*kern_cent_X;
-    int pad_size_Y = data_size_Y+2*kern_cent_Y;
-    int pad_size_total = pad_size_Y * pad_size_X;
+        float buffer[KER_SIZE*KER_SIZE];
 
-    // Padding code
-    float kern_cpy[KERNX*KERNY];
-    float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
+        int buffer_row_head;
+        int pad_row_head;
+        int index = 0;
+        int i = 0;
 
-    for (int i = 0; i<KERNX*KERNY; i++) {
-        kern_cpy[i] = kernel[KERNX * KERNY - 1 - i];
-    }
-    for (int b = 0; b < data_size_Y; b++){
-        for (int c = 0; c < data_size_X; c++){
-            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)] = in[c+b*data_size_X];
+        // copy into buffer
+        for (int row = 0; row < KER_SIZE; row++) {
+                buffer_row_head = row * KER_SIZE;
+                pad_row_head = (row+out_row) * pad_num_col + out_col;
+
+                for (int col = 0; col < KER_SIZE; col++) { 
+                        i = buffer_row_head+col;
+                        buffer[i] = pad[pad_row_head+col];
+                }
         }
-    }
 
-    float *g_in;
-    float *g_out;
-    float *g_kern;
-    cudaMalloc((void**) &g_in, sizeof(int)*pad_size_total);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
-    cudaMalloc((void**) &g_out, sizeof(int)*data_size_X*data_size_Y);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
-    cudaMalloc((void**) &g_kern, sizeof(int)*KERNY*KERNX);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
+        // find median with binary search
+        float estimate = 128.0f;
+        float lower = 0.0f;
+        float upper = 255.0f;
+        float higher;
 
-    cudaMemcpy(g_in, in_cpy, sizeof(int)*pad_size_total, cudaMemcpyHostToDevice);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
-    cudaMemcpy(g_kern, kern_cpy, sizeof(int)*KERNX*KERNY, cudaMemcpyHostToDevice);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
-	float sum = 0;
-	for (int i=0; i<KERNX*KERNY; i++){
-	        sum += kernel[i];
-	}
-	sum /= 2;
-   	dim3 block_size;
-  	block_size.x = data_size_X;
-  	block_size.y = data_size_Y;
-  	// launch the kernel
-    *t0 = timestamp();
-  	convolve<<<1, block_size>>>(g_in, g_kern, g_out, pad_size_X, sum);
-    *t1 = timestamp();
-  	cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
+        for (int _ = 0; _ < NUM_ITERATIONS; _++){
+                higher = 0;
+                for (int i = 0; i < KER_SIZE*KER_SIZE; i++){
+                        higher += ((float)(estimate < buffer[i])) * kern[i];
+                }
+                if (higher > median_index){
+                        lower = estimate;
+                } else {
+                        upper = estimate;
+                }
+                estimate = 0.5 * (upper + lower);
+        }
 
-  	// copy back the result array to the CPU
-  	cudaMemcpy(out, g_out, sizeof(int)*data_size_X*data_size_Y, cudaMemcpyDeviceToHost);
-    cudaDeviceSynchronize();
-    checkCudaErrors(cudaGetLastError());
 
-  	cudaFree(g_in);
-  	cudaFree(g_out);
-	cudaFree(g_kern);
-  	return 1;
-}
+
+        out[out_row*out_num_col+out_col] = estimate;
+} 
+
+
