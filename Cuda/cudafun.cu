@@ -248,8 +248,9 @@ void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, f
             cudaFree(g_in);
     cudaFree(g_out);
     cudaFree(g_kern);
-    } else {
-                    float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
+    } else 
+    {
+    float *in_cpy = (float*) calloc(pad_size_total, sizeof(float));
 
             for (int b = 0; b < data_size_Y; b++){
         for (int c = 0; c < data_size_X; c++){

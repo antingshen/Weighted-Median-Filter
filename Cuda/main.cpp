@@ -127,7 +127,7 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
         pixel_t *outPix = NULL;
 
         //grab command line arguments
-    while((c = getopt(argc, argv, "i:k:o:"))!=-1)
+    while((c = getopt(argc, argv, "i:k:o:c"))!=-1)
     {
             switch(c)
             {
