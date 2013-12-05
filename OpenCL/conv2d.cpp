@@ -13,9 +13,9 @@
 
 typedef struct
 {
-	float r;
-	float g;
-	float b;
+	cl_float r;
+	cl_float g;
+	cl_float b;
 } pixel_t;
 
 // double timestamp()
@@ -76,9 +76,8 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
-int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1)
+int conv2D_grayscale(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1)
 {
-    printf("Initiating OpenCL...\n");
     int kern_cent_X = (KERNX - 1)/2;
     int kern_cent_Y = (KERNY - 1)/2;
     int pad_size_X = data_size_X+2*kern_cent_X;
@@ -102,7 +101,7 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
     std::string convolve_kernel_str;
 
     std::string convolve_name_str = std::string("convolve");
-    std::string convolve_kernel_file = std::string("conv2d.cl");
+    std::string convolve_kernel_file = std::string("conv2D_gray.cl");
 
     cl_vars_t cv; 
     cl_kernel convolve;
@@ -112,10 +111,11 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
 
     initialize_ocl(cv);
 
+    cl_int err = CL_SUCCESS;
+
     compile_ocl_program(convolve, cv, convolve_kernel_str.c_str(),
     convolve_name_str.c_str());
-
-    cl_int err = CL_SUCCESS;
+    CHK_ERR(err);
 
     cl_mem g_in, g_out, g_kern;
 
@@ -206,6 +206,137 @@ int conv2D(int data_size_X, int data_size_Y, float* kernel, float* in, float* ou
 
 }
 
+int conv2D(int data_size_X, int data_size_Y, float* kernel, pixel_t* in, pixel_t* out, double* t0, double* t1)
+{
+    int kern_cent_X = (KERNX - 1)/2;
+    int kern_cent_Y = (KERNY - 1)/2;
+    int pad_size_X = data_size_X+2*kern_cent_X;
+    int pad_size_Y = data_size_Y+2*kern_cent_Y;
+    int pad_size_total = pad_size_Y * pad_size_X;
+
+    // Padding code
+    float kern_cpy[KERNX*KERNY];
+    pixel_t *in_cpy = (pixel_t*) calloc(pad_size_total, sizeof(pixel_t));
+
+    for (int i = 0; i<KERNX*KERNY; i++) {
+        kern_cpy[i] = kernel[KERNX * KERNY - 1 - i];
+    }
+    for (int b = 0; b < data_size_Y; b++){
+        for (int c = 0; c < data_size_X; c++){
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].r = in[c+b*data_size_X].r;
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].g = in[c+b*data_size_X].g;
+            in_cpy[(pad_size_X+kern_cent_X)+(c+b*data_size_X)+(b*2*kern_cent_X)].b = in[c+b*data_size_X].b;
+        }
+    }
+
+    // OpenCL setup
+    std::string convolve_kernel_str;
+
+    std::string convolve_name_str = std::string("convolve");
+    std::string convolve_kernel_file = std::string("conv2d.cl");
+
+    cl_vars_t cv; 
+    cl_kernel convolve;
+
+    readFile(convolve_kernel_file,
+    convolve_kernel_str);
+
+    initialize_ocl(cv);
+
+    compile_ocl_program(convolve, cv, convolve_kernel_str.c_str(),
+    convolve_name_str.c_str());
+
+    cl_int err = CL_SUCCESS;
+
+    cl_mem g_in, g_out, g_kern;
+
+    g_in = clCreateBuffer(cv.context,CL_MEM_READ_WRITE,
+        sizeof(pixel_t)*pad_size_total,NULL,&err);
+    CHK_ERR(err);  
+
+    g_kern = clCreateBuffer(cv.context,CL_MEM_READ_WRITE,
+        sizeof(float)*KERNY*KERNX,NULL,&err);
+    CHK_ERR(err);
+
+    g_out = clCreateBuffer(cv.context,CL_MEM_READ_WRITE,
+        sizeof(pixel_t)*data_size_X*data_size_Y,NULL,&err);
+    CHK_ERR(err);
+
+    err = clEnqueueWriteBuffer(cv.commands, g_in, true, 0, sizeof(pixel_t)*pad_size_total,
+        in_cpy, 0, NULL, NULL);
+    CHK_ERR(err);
+
+    err = clEnqueueWriteBuffer(cv.commands, g_kern, true, 0, sizeof(float)*KERNX*KERNY,
+        kern_cpy, 0, NULL, NULL);
+    CHK_ERR(err);
+
+    size_t global_work_size[2] = {data_size_X, data_size_Y};
+
+    err = clSetKernelArg(convolve,0,
+        sizeof(cl_mem), &g_in);
+    CHK_ERR(err);
+
+    err = clSetKernelArg(convolve,1,
+        sizeof(cl_mem), &g_kern);
+    CHK_ERR(err);
+
+    err = clSetKernelArg(convolve,2,
+        sizeof(cl_mem), &g_out);
+    CHK_ERR(err);
+
+    err = clSetKernelArg(convolve,3,
+        sizeof(int), &pad_size_X);
+    CHK_ERR(err);
+
+    // int kern_width = KERNX;
+    // err = clSetKernelArg(convolve,4,
+    //     sizeof(int), &kern_width);
+    // CHK_ERR(err);
+
+    float sum = 0;
+    for (int i=0; i<KERNX*KERNY; i++){
+    	sum += kernel[i];
+    }
+    sum /= 2;
+    err = clSetKernelArg(convolve,4,
+    	sizeof(float), &sum);
+    CHK_ERR(err);
+
+    *t0 = timestamp();
+    err = clEnqueueNDRangeKernel(cv.commands, 
+        convolve,
+        2,//work_dim,
+        NULL, //global_work_offset
+        global_work_size, //global_work_size
+        NULL, //local_work_size
+        0, //num_events_in_wait_list
+        NULL, //event_wait_list
+        NULL //
+        );
+    *t1 = timestamp();
+    CHK_ERR(err);
+
+    err = clEnqueueReadBuffer(cv.commands, g_out, true, 0, sizeof(pixel_t)*data_size_X*data_size_Y,
+        out, 0, NULL, NULL);
+    CHK_ERR(err);
+
+    clReleaseMemObject(g_in);
+    clReleaseMemObject(g_out);
+    clReleaseMemObject(g_kern);
+
+    uninitialize_ocl(cv);
+
+    // printf("--KERNEL--\n");
+    // print_matrix(kern_cpy, KERNX*KERNY, KERNX);
+    // printf("--INPUT--\n");
+    // print_matrix(in, data_size_X*data_size_Y, data_size_X);
+    // printf("--MY OUTPUT--\n");
+    // print_matrix(out, data_size_X*data_size_Y, data_size_X);
+
+    return 1;
+
+}
+
 int main(int argc, char *argv[])
 {
 float kernel_0[] = { 0, 0, 0, 0, 0, // "sharpen"
@@ -218,10 +349,10 @@ float kernel_1[]={ 1, 1, 1, 1, 1, // blur
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1,
 				   1, 1, 1, 1, 1, };
-float kernel_2[] = { 0, 0, 0, 0, 0, // darken
-					 0, 0, 0, 0, 0,
-					 0, 0,0.5, 0, 0,
-					 0, 0, 0, 0, 0,
+float kernel_2[] = { 0, 0, 0, 0, 0, // from book 
+					 0, 1, 1, 1, 0,
+					 0, 3, 3, 3, 0,
+					 0, 1, 1, 1, 0,
 					 0, 0, 0, 0, 0, };
 float kernel_3[]={1,1,1,1,1, // weighted mean filter
 				  1,2,2,2,1,
@@ -252,11 +383,13 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 	int width=-1,height=-1;
 	int kernel_num = 1;
 	frame_ptr frame;
+	int grayscale = 0;
+	int quiet = 0;
 
 	pixel_t *inPix=NULL;
 	pixel_t *outPix=NULL;
 
-	while((c = getopt(argc, argv, "i:k:o:"))!=-1)
+	while((c = getopt(argc, argv, "i:k:o:gq"))!=-1)
 	{
 		switch(c)
 		{
@@ -268,6 +401,12 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 			break;
 		case 'k':
 			kernel_num = atoi(optarg);
+			break;
+		case 'g':
+			grayscale = 1;
+			break;
+		case 'q':
+			quiet = 1;
 			break;
 		}
 	}
@@ -288,29 +427,40 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 	inPix = new pixel_t[width*height];
 	outPix = new pixel_t[width*height];
 
+	float* kernel = kernels[kernel_num];
+	double kernel_start, kernel_end, call_start, call_end;
+
 	convert_to_pixel(inPix, frame);
 
-	float* inFloats = new float[width*height];
-	float* outFloats = new float[width*height];
+	if (grayscale){
+		float* inFloats = new float[width*height];
+		float* outFloats = new float[width*height];
 
-	for (int i=0; i<width*height; i++){
-		outPix[i].r = 0;
-		outPix[i].g = 0;
-		outPix[i].b = 0;
-		outFloats[i] = 0;
-		inFloats[i] = (inPix[i].r + inPix[i].g + inPix[i].b)/3;
+		for (int i=0; i<width*height; i++){
+			// outPix[i].r = 0;
+			// outPix[i].g = 0;
+			// outPix[i].b = 0;
+			outFloats[i] = 0;
+			inFloats[i] = (inPix[i].r + inPix[i].g + inPix[i].b)/3;
+		}
+		call_start = timestamp();
+		conv2D_grayscale(width, height, kernel, inFloats, outFloats, &kernel_start, &kernel_end);
+		call_end = timestamp();
+		for (int i=0; i<width*height; i++){
+			outPix[i].r = outFloats[i];
+			outPix[i].g = outFloats[i];
+			outPix[i].b = outFloats[i];
+		}
+	} else {
+		call_start = timestamp();
+		conv2D(width, height, kernel, inPix, outPix, &kernel_start, &kernel_end);
+		call_end = timestamp();
 	}
-
-	float* kernel = kernels[kernel_num];
-
-	double t0, t1;
-	conv2D(width, height, kernel, inFloats, outFloats, &t0, &t1);
-	printf("%g sec\n", t1-t0);
-
-	for (int i=0; i<width*height; i++){
-		outPix[i].r = outFloats[i];
-		outPix[i].g = outFloats[i];
-		outPix[i].b = outFloats[i];
+	if (quiet){
+		printf("%g,%g\n", kernel_end-kernel_start,call_end-call_start);
+	} else {
+		printf("Pure kernel time: %g sec\n", kernel_end-kernel_start);
+		printf("Function time: %g sec\n", call_end-call_start);
 	}
 
 	convert_to_frame(frame, outPix);

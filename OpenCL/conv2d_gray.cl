@@ -1,16 +1,9 @@
 // Assumes Kernel is 5x5
 
-typedef struct
-{
-	float r;
-	float g;
-	float b;
-} pixel_t;
-
 __kernel void convolve(
-	const __global pixel_t * pad, 
+	const __global float * pad, 
 	__global float * kern, 
-	__global pixel_t * out, 
+	__global float * out, 
 	const int pad_num_col,
 	const float median_index) 
 { 
@@ -21,7 +14,6 @@ __kernel void convolve(
 	const int out_row = get_global_id(1);
 
 	float buffer[25];
-	pixel_t pix;
 
 	int pad_row_head;
 	int index = 0;
@@ -29,44 +21,44 @@ __kernel void convolve(
 
 	// copy into buffer
 	pad_row_head = out_row * pad_num_col + out_col;
-	pix = pad[pad_row_head];   buffer[0] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+1]; buffer[1] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+2]; buffer[2] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+3]; buffer[3] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+4]; buffer[4] = pix.r + pix.g + pix.b;
+	buffer[0] = pad[pad_row_head];
+	buffer[1] = pad[pad_row_head+1];
+	buffer[2] = pad[pad_row_head+2];
+	buffer[3] = pad[pad_row_head+3];
+	buffer[4] = pad[pad_row_head+4];
 
 	pad_row_head += pad_num_col;
-	pix = pad[pad_row_head];   buffer[5] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+1]; buffer[6] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+2]; buffer[7] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+3]; buffer[8] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+4]; buffer[9] = pix.r + pix.g + pix.b;
+	buffer[5] = pad[pad_row_head];
+	buffer[6] = pad[pad_row_head+1];
+	buffer[7] = pad[pad_row_head+2];
+	buffer[8] = pad[pad_row_head+3];
+	buffer[9] = pad[pad_row_head+4];
 
 	pad_row_head += pad_num_col;
-	pix = pad[pad_row_head];   buffer[10] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+1]; buffer[11] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+2]; buffer[12] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+3]; buffer[13] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+4]; buffer[14] = pix.r + pix.g + pix.b;
+	buffer[10] = pad[pad_row_head];
+	buffer[11] = pad[pad_row_head+1];
+	buffer[12] = pad[pad_row_head+2];
+	buffer[13] = pad[pad_row_head+3];
+	buffer[14] = pad[pad_row_head+4];
 
 	pad_row_head += pad_num_col;
-	pix = pad[pad_row_head];   buffer[15] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+1]; buffer[16] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+2]; buffer[17] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+3]; buffer[18] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+4]; buffer[19] = pix.r + pix.g + pix.b;
+	buffer[15] = pad[pad_row_head];
+	buffer[16] = pad[pad_row_head+1];
+	buffer[17] = pad[pad_row_head+2];
+	buffer[18] = pad[pad_row_head+3];
+	buffer[19] = pad[pad_row_head+4];
 
 	pad_row_head += pad_num_col;
-	pix = pad[pad_row_head];   buffer[20] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+1]; buffer[21] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+2]; buffer[22] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+3]; buffer[23] = pix.r + pix.g + pix.b;
-	pix = pad[pad_row_head+4]; buffer[24] = pix.r + pix.g + pix.b;
+	buffer[20] = pad[pad_row_head];
+	buffer[21] = pad[pad_row_head+1];
+	buffer[22] = pad[pad_row_head+2];
+	buffer[23] = pad[pad_row_head+3];
+	buffer[24] = pad[pad_row_head+4];
 
 	// find median with binary search
-	float estimate = 382.5f;
+	float estimate = 128.0f;
 	float lower = 0.0f;
-	float upper = 765.0f;
+	float upper = 255.0f;
 	float higher;
 
 	for (int _ = 0; _ < NUM_ITERATIONS; _++){
@@ -104,19 +96,7 @@ __kernel void convolve(
 		estimate = 0.5 * (upper + lower);
 	}
 
-	float diff;
-	for (int i=0; i<25; i++){
-		diff = (buffer[i] - estimate)/3;
-		diff = diff * diff;
-		if (diff <= 1){
-			out[out_row*out_num_col+out_col] = pad[(i/5+out_row)*pad_num_col+i%5+out_col];
-			return;
-		}
-	}
-
-	pix.r = 255; pix.g = 0; pix.b = 0;
-	out[out_row*out_num_col+out_col] = pix;
-	return;
+	out[out_row*out_num_col+out_col] = estimate;
 } 
 
 

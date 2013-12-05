@@ -9,7 +9,7 @@
 
 #include "readjpeg.h"
 
-void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1);
+void cuda_function(int data_size_X, int data_size_Y, float* kernel, float* in, float* out, double* t0, double* t1, int color);
 
 void normalize( float * kernel ) {
   int sum = 0;
@@ -176,22 +176,15 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
         float* kernel = kernels[kernel_num];
 
     double t0, t1;
-    cuda_function(width, height, kernel, inFloats, outFloats, &t0, &t1. color);
+    cuda_function(width, height, kernel, inFloats, outFloats, &t0, &t1, color);
     printf("%g sec\n", t1-t0);
-
-    for (int i=0; i<width*height; i++){
-      if(color == 1){
-        outPix[i].r = inFloats[outFloats[i]].r;
-        outPix[i].g = inFloats[outFloats[i]].g;
-        outPix[i].b = inFloats[outFloats[i]].b;
-      } else {
-        outPixel[i].r = outFLoats[i];
-        outPixel[i].g = outFLoats[i];
-        outPixel[i].b = outFLoats[i];
-
-      }
+    if(color == 1) { 
+        for (int i=0; i<width*height; i++){
+            outPix[i].r = outFloats[i];
+            outPix[i].g = outFloats[i];
+            outPix[i].b = outFloats[i];
+        }
     }
-
     convert_to_frame(frame, outPix);
 
     write_JPEG_file(outName,frame,75);
