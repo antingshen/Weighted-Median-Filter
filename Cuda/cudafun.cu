@@ -12,12 +12,6 @@
 #define KERNX 5 //this is the x-size of the kernel. It will always be odd.
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
 
-double timestamp()
-{
-  struct timeval tv;
-  gettimeofday (&tv, 0);
-  return tv.tv_sec + 1e-6*tv.tv_usec;
-}
 typedef struct
 {
         float r;
