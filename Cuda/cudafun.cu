@@ -294,9 +294,9 @@ void cuda_function2(int data_size_X, int data_size_Y, float* kernel, float* in, 
     const dim3 gridSize(data_size_X, data_size_Y, 1);
 
     // launch the kernel
-    *t0 = timestamp();
+    *t0 = timestamp2();
     convolveBW<<<gridSize, blockSize>>>(g_in, g_kern, g_out, pad_size_X, sum);
-    *t1 = timestamp();
+    *t1 = timestamp2();
     cudaDeviceSynchronize();
 
     // copy back the result array to the CPU
