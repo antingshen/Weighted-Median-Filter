@@ -77,6 +77,8 @@ void convert_to_frame(frame_ptr out, pixel_t *in)
 #define KERNY 5 //this is the y-size of the kernel. It will always be odd.
 
 int main(int argc, char *argv[]){
+        double program_start = timestamp();
+
 
 float kernel_0[] = { 0, 0, 0, 0, 0, // "sharpen"
                                          0, 0,-1, 0, 0,
@@ -177,13 +179,18 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
         float* kernel = kernels[kernel_num];
 
     double t0, t1;
+    double thing1, thing2;
     if(color == 1){
+        thing1 = timestamp();
         cuda_function(width, height, kernel, inPix, outPix, &t0, &t1);
+        thing2 = timestamp();
     } else {
+        thing1 = timestamp();
         cuda_function2(width, height, kernel, inFloats, outFloats2, &t0, &t1);
-
+        thing2 = timestamp();
     }
-    printf("%g sec\n", t1-t0);
+    printf("%g sec whole function\n", thing2 - thing1);
+    printf("%g sec kernel\n", t1-t0);
     if(color == 0) { 
         for (int i=0; i<width*height; i++){
             outPix[i].r = outFloats2[i];
@@ -198,5 +205,7 @@ float* kernels[7] = {kernel_0, kernel_1, kernel_2, kernel_3, kernel_4,
 
     delete [] inPix; 
     delete [] outPix;
+        double program_end = timestamp();
+    printf("%g sec main function\n", program_end - program_start);
     return 0;
 }
