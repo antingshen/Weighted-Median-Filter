@@ -43,7 +43,7 @@ $ ./main -i input.jpg -o output.jpg -k 2 -c
 0. Sharpen
 1. Uniform
 2. Weighted Median
-3. Weigthed Mean
+3. Weighted Mean
 4. Gaussian
 5. Emboss
 6. Edge Detect
